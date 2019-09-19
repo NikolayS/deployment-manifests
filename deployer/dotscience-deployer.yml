@@ -105,7 +105,7 @@ spec:
         - name: deployer
           image: "quay.io/dotmesh/dotscience-deployer:{{ .tag | default "latest" }}"
           imagePullPolicy: Always
-          command: ["ds-deployer"]
+          command: ["ds-deployer", "run"]
           env:
             - name: NAMESPACE
               valueFrom:
