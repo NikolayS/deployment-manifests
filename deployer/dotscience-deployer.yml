@@ -103,7 +103,7 @@ spec:
       serviceAccountName: dotscience-deployer
       containers:
         - name: deployer
-          image: "quay.io/dotmesh/dotscience-deployer::{{ .tag | default "latest" }}"
+          image: "quay.io/dotmesh/dotscience-deployer:{{ .tag | default "latest" }}"
           imagePullPolicy: Always
           command: ["ds-deployer"]
           env:
