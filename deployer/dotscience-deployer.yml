@@ -31,7 +31,6 @@ rules:
       - ""
       - extensions
       - apps
-      - batch
     resources:
       - deployments
       - services
