@@ -105,7 +105,11 @@ spec:
         - name: deployer
           image: "quay.io/dotmesh/dotscience-deployer:{{ .tag | default "latest" }}"
           imagePullPolicy: Always
+          {{ if .notls }}
+          command: ["ds-deployer", "run", "--no-require-tls"]
+          {{ else }}
           command: ["ds-deployer", "run"]
+          {{ end }}
           env:
             - name: NAMESPACE
               valueFrom:
