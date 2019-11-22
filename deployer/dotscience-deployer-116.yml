@@ -1,0 +1,138 @@
+---
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{ .namespace | default "dotscience-deployer" }}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dotscience-deployer
+  namespace: "{{ .namespace | default "dotscience-deployer" }}"
+  labels:
+    app: dotscience-deployer
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dotscience-deployer
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - watch
+      - list
+  - apiGroups:
+      - ""
+      - extensions
+      - apps
+    resources:
+      - deployments
+      - services
+      - ingresses
+      - secrets
+    verbs:
+      - get
+      - create
+      - delete
+      - watch
+      - list
+      - update
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dotscience-deployer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dotscience-deployer
+subjects:
+  - kind: ServiceAccount
+    name: dotscience-deployer
+    namespace: "{{ .namespace | default "dotscience-deployer" }}"
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotscience-deployer
+  namespace: "{{ .namespace | default "dotscience-deployer" }}"
+  labels:
+    app: dotscience-deployer
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9300
+      targetPort: 9300
+      protocol: TCP
+      name: dotscience-deployer
+  selector:
+    app: dotscience-deployer
+  sessionAffinity: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotscience-deployer
+  namespace: "{{ .namespace | default "dotscience-deployer" }}"
+  labels:
+    app: dotscience-deployer
+  annotations:
+    keel.sh/policy: {{ .update_policy | default "force" }}
+    keel.sh/trigger: "poll"
+    keel.sh/pollSchedule: "@every 1m"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dotscience-deployer
+  template:
+    metadata:
+      labels:
+        app: dotscience-deployer
+    spec:
+      serviceAccountName: dotscience-deployer
+      containers:
+        - name: deployer
+          image: "quay.io/dotmesh/dotscience-deployer:{{ .tag | default "latest" }}"
+          imagePullPolicy: Always
+          {{ if .notls }}
+          command: ["ds-deployer", "run", "--no-require-tls"]
+          {{ else }}
+          command: ["ds-deployer", "run"]
+          {{ end }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GATEWAY_ADDRESS
+              value: "{{ .gateway }}:8800"
+            - name: TOKEN
+              value: "{{ .token }}" 
+            - name: HEALTH_PORT
+              value: "9300"
+          ports:
+            - containerPort: 9300
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9300
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 600m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
