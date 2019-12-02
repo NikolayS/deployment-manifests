@@ -36,6 +36,8 @@ rules:
       - services
       - ingresses
       - secrets
+      - pods
+      - pods/log
     verbs:
       - get
       - create
@@ -79,7 +81,7 @@ spec:
   sessionAffinity: None
 
 ---
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dotscience-deployer
@@ -136,17 +138,3 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
-
----
-# Source: keel/templates/pod-disruption-budget.yaml
-
-apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
-metadata:
-  name: dotscience-deployer
-  namespace: "{{ .namespace | default "dotscience-deployer" }}"
-spec:
-  maxUnavailable: 1
-  selector:
-    matchLabels:
-      app: dotscience-deployer
