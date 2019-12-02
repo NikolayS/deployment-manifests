@@ -36,6 +36,8 @@ rules:
       - services
       - ingresses
       - secrets
+      - pods
+      - pods/log
     verbs:
       - get
       - create
