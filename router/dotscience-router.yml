@@ -1,0 +1,136 @@
+---
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{ .namespace | default "dotscience-router" }}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dotscience-router
+  namespace: "{{ .namespace | default "dotscience-router" }}"
+  labels:
+    app: dotscience-router
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dotscience-router
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - watch
+      - list
+  - apiGroups:
+      - ""
+      - extensions
+      - apps
+    resources:
+      - deployments
+      - services
+      - ingresses
+      - endpoints
+      - secrets
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - create
+      - delete
+      - watch
+      - list
+      - update
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dotscience-router
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dotscience-router
+subjects:
+  - kind: ServiceAccount
+    name: dotscience-router
+    namespace: "{{ .namespace | default "dotscience-deployer" }}"
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotscience-router
+  namespace: "{{ .namespace | default "dotscience-deployer" }}"
+  labels:
+    app: dotscience-router
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9300
+      targetPort: 9300
+      protocol: TCP
+      name: dotscience-router
+  selector:
+    app: dotscience-router
+  sessionAffinity: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotscience-router
+  namespace: "{{ .namespace | default "dotscience-deployer" }}"
+  labels:
+    app: dotscience-router
+  annotations:
+    keel.sh/policy: {{ .update_policy | default "force" }}
+    keel.sh/trigger: "poll"
+    keel.sh/pollSchedule: "@every 1m"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dotscience-router
+  template:
+    metadata:
+      labels:
+        app: dotscience-router
+    spec:
+      serviceAccountName: dotscience-router
+      containers:
+        - name: router
+          image: "quay.io/dotmesh/dotscience-inference-router:{{ .tag | default "latest" }}"
+          imagePullPolicy: Always
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GATEWAY_ADDRESS
+              value: "{{ .gateway }}:8800"
+            - name: TOKEN
+              value: "{{ .token }}" 
+            - name: HEALTH_PORT
+              value: "9300"
+          ports:
+            - containerPort: 9700
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9700
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          resources:
+            limits:
+              cpu: 600m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
