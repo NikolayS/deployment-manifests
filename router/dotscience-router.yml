@@ -121,10 +121,11 @@ spec:
               value: "9300"
           ports:
             - containerPort: 9700
+            - containerPort: 9300
           livenessProbe:
             httpGet:
               path: /health
-              port: 9700
+              port: 9300
             initialDelaySeconds: 30
             timeoutSeconds: 10
           resources:
