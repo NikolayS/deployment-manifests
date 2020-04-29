@@ -119,6 +119,10 @@ spec:
               value: "{{ .token }}" 
             - name: HEALTH_PORT
               value: "9300"
+            {{ if .notls }}
+            - name: DISABLE_TLS
+              value: "true"
+            {{ end }}
           ports:
             - containerPort: 9700
             - containerPort: 9300
