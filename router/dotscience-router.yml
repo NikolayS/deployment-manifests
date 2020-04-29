@@ -71,7 +71,7 @@ metadata:
   labels:
     app: dotscience-router
 spec:
-  type: LoadBalancer
+  type: {{ .service_type | default "LoadBalancer" }}
   ports:
     - port: 80
       targetPort: 9700
